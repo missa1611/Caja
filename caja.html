@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caja del Ciber</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial, sans-serif;
+    background:#111;
+    color:white;
+    margin:0;
+    padding:15px;
+    max-width:600px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:5px;
+}
+
+.subtitulo{
+    text-align:center;
+    color:#aaa;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#1c1c1c;
+    padding:15px;
+    border-radius:15px;
+    margin-bottom:15px;
+}
+
+label{
+    display:block;
+    margin-top:8px;
+    color:#ccc;
+}
+
+input, select, button{
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    font-size:17px;
+    border-radius:8px;
+    border:none;
+}
+
+input, select{
+    background:#292929;
+    color:white;
+}
+
+button{
+    background:#00ff88;
+    color:#000;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:active{
+    transform:scale(.98);
+}
+
+.btn-secundario{
+    background:#333;
+    color:white;
+}
+
+.btn-rojo{
+    background:#ff3b3b;
+    color:white;
+}
+
+.btn-azul{
+    background:#168cff;
+    color:white;
+}
+
+.producto{
+    background:#252525;
+    padding:12px;
+    border-radius:10px;
+    margin-top:10px;
+}
+
+.producto-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.producto-nombre{
+    font-size:18px;
+    font-weight:bold;
+}
+
+.eliminar{
+    width:auto;
+    padding:7px 10px;
+    background:#ff3b3b;
+    color:white;
+    margin:0;
+}
+
+.subtotal{
+    color:#00ff88;
+    font-size:18px;
+    margin-top:8px;
+}
+
+.total{
+    background:#222;
+    padding:20px;
+    border-radius:15px;
+    text-align:center;
+    margin-top:15px;
+}
+
+.total-grande{
+    font-size:32px;
+    color:#00ff88;
+    font-weight:bold;
+}
+
+.cambio{
+    font-size:26px;
+    color:#00ff88;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+.falta{
+    color:#ff5252;
+    font-weight:bold;
+}
+
+.historial-item{
+    background:#292929;
+    padding:10px;
+    margin-top:8px;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.vacio{
+    text-align:center;
+    color:#777;
+    padding:10px;
+}
+
+.oculto{
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🖥️ Caja del Ciber</h1>
+<div class="subtitulo">Calculadora de ventas</div>
+
+<!-- AGREGAR PRODUCTO -->
+<div class="card">
+
+<h3>➕ Agregar servicio</h3>
+
+<label>Nombre del servicio / juego</label>
+<input type="text" id="nombre" placeholder="Ej. Copias, impresión, Free Fire...">
+
+<label>Precio por unidad</label>
+<input type="number" id="precio" step="0.01" min="0" placeholder="$0.00">
+
+<label>Cantidad</label>
+<input type="number" id="cantidad" min="1" value="1">
+
+<button onclick="agregarProducto()">
+    AGREGAR A LA CUENTA
+</button>
+
+</div>
+
+
+<!-- LISTA DE PRODUCTOS -->
+<div class="card">
+
+<h3>🧾 Cuenta actual</h3>
+
+<div id="lista">
+    <div class="vacio">
+        Todavía no hay productos.
+    </div>
+</div>
+
+</div>
+
+
+<!-- TOTAL -->
+<div class="total">
+
+<div>Total a cobrar</div>
+
+<div class="total-grande">
+$<span id="total">0.00</span>
+</div>
+
+<label>💵 ¿Con cuánto te pagan?</label>
+
+<input
+    type="number"
+    id="paga"
+    step="0.01"
+    min="0"
+    placeholder="$0.00"
+    oninput="calcularCambio()"
+>
+
+<div id="resultadoCambio"></div>
+
+</div>
+
+
+<!-- DESCUENTO -->
+<div class="card">
+
+<h3>🏷️ Descuento</h3>
+
+<input
+    type="number"
+    id="descuento"
+    min="0"
+    step="0.01"
+    placeholder="Descuento en pesos"
+    oninput="actualizarTotal()"
+>
+
+</div>
+
+
+<!-- BOTONES -->
+<div class="card">
+
+<button onclick="finalizarVenta()" class="btn-azul">
+    💾 FINALIZAR VENTA
+</button>
+
+<button onclick="limpiarVenta()" class="btn-secundario">
+    🗑️ LIMPIAR CUENTA
+</button>
+
+<button onclick="mostrarHistorial()" class="btn-secundario">
+    📋 VER HISTORIAL
+</button>
+
+</div>
+
+
+<!-- HISTORIAL -->
+<div class="card oculto" id="historialBox">
+
+<h3>📋 Historial de ventas</h3>
+
+<div id="historial"></div>
+
+<button onclick="borrarHistorial()" class="btn-rojo">
+    🗑️ BORRAR HISTORIAL
+</button>
+
+</div>
+
+
+<script>
+
+let productos = [];
+let historialVentas = [];
+
+
+// Cargar historial guardado
+window.onload = function(){
+
+    let guardado = localStorage.getItem("historialCiber");
+
+    if(guardado){
+        historialVentas = JSON.parse(guardado);
+    }
+
+};
+
+
+// AGREGAR PRODUCTO
+function agregarProducto(){
+
+    let nombre = document.getElementById("nombre").value.trim();
+
+    let precio = parseFloat(
+        document.getElementById("precio").value
+    );
+
+    let cantidad = parseInt(
+        document.getElementById("cantidad").value
+    );
+
+    if(nombre === ""){
+        alert("Escribe el nombre del servicio.");
+        return;
+    }
+
+    if(isNaN(precio) || precio < 0){
+        alert("Escribe un precio válido.");
+        return;
+    }
+
+    if(isNaN(cantidad) || cantidad <= 0){
+        alert("Escribe una cantidad válida.");
+        return;
+    }
+
+
+    productos.push({
+
+        nombre:nombre,
+        precio:precio,
+        cantidad:cantidad
+
+    });
+
+
+    // Limpiar campos
+
+    document.getElementById("nombre").value="";
+    document.getElementById("precio").value="";
+    document.getElementById("cantidad").value=1;
+
+    mostrarProductos();
+
+    actualizarTotal();
+
+}
+
+
+// MOSTRAR PRODUCTOS
+function mostrarProductos(){
+
+    let lista = document.getElementById("lista");
+
+    lista.innerHTML="";
+
+
+    if(productos.length === 0){
+
+        lista.innerHTML=`
+            <div class="vacio">
+                Todavía no hay productos.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    productos.forEach((producto,index)=>{
+
+        let subtotal =
+            producto.precio * producto.cantidad;
+
+
+        lista.innerHTML += `
+
+        <div class="producto">
+
+            <div class="producto-header">
+
+                <div class="producto-nombre">
+                    ${producto.nombre}
+                </div>
+
+                <button
+                    class="eliminar"
+                    onclick="eliminarProducto(${index})">
+                    ✕
+                </button>
+
+            </div>
+
+            <div>
+                ${producto.cantidad} ×
+                $${producto.precio.toFixed(2)}
+            </div>
+
+            <div class="subtotal">
+                Subtotal: $${subtotal.toFixed(2)}
+            </div>
+
+        </div>
+
+        `;
+
+    });
+
+}
+
+
+// ELIMINAR
+function eliminarProducto(index){
+
+    productos.splice(index,1);
+
+    mostrarProductos();
+
+    actualizarTotal();
+
+}
+
+
+// CALCULAR TOTAL
+function obtenerTotal(){
+
+    let total=0;
+
+    productos.forEach(producto=>{
+
+        total +=
+            producto.precio *
+            producto.cantidad;
+
+    });
+
+
+    let descuento =
+        parseFloat(
+            document.getElementById("descuento").value
+        ) || 0;
+
+
+    total -= descuento;
+
+
+    if(total < 0){
+        total=0;
+    }
+
+
+    return total;
+
+}
+
+
+// ACTUALIZAR TOTAL
+function actualizarTotal(){
+
+    let total = obtenerTotal();
+
+    document.getElementById("total")
+        .textContent = total.toFixed(2);
+
+    calcularCambio();
+
+}
+
+
+// CAMBIO
+function calcularCambio(){
+
+    let total=obtenerTotal();
+
+    let paga =
+        parseFloat(
+            document.getElementById("paga").value
+        ) || 0;
+
+
+    let resultado =
+        document.getElementById("resultadoCambio");
+
+
+    if(paga === 0){
+
+        resultado.innerHTML="";
+
+        return;
+
+    }
+
+
+    let diferencia =
+        paga-total;
+
+
+    if(diferencia >= 0){
+
+        resultado.innerHTML=`
+
+        <div class="cambio">
+            Cambio: $${diferencia.toFixed(2)}
+        </div>
+
+        `;
+
+    }else{
+
+        resultado.innerHTML=`
+
+        <div class="falta">
+            Falta: $${Math.abs(diferencia).toFixed(2)}
+        </div>
+
+        `;
+
+    }
+
+}
+
+
+// LIMPIAR VENTA
+function limpiarVenta(){
+
+    if(productos.length === 0){
+        return;
+    }
+
+
+    if(confirm("¿Quieres limpiar la cuenta actual?")){
+
+        productos=[];
+
+        document.getElementById("paga").value="";
+        document.getElementById("descuento").value="";
+
+        mostrarProductos();
+
+        actualizarTotal();
+
+    }
+
+}
+
+
+// FINALIZAR VENTA
+function finalizarVenta(){
+
+    if(productos.length === 0){
+
+        alert("No hay productos en la cuenta.");
+
+        return;
+
+    }
+
+
+    let total=obtenerTotal();
+
+    let paga =
+        parseFloat(
+            document.getElementById("paga").value
+        ) || 0;
+
+
+    if(paga < total){
+
+        alert("El dinero recibido no es suficiente.");
+
+        return;
+
+    }
+
+
+    let cambio=paga-total;
+
+
+    let venta={
+
+        fecha:new Date().toLocaleString(),
+
+        productos:[...productos],
+
+        total:total,
+
+        paga:paga,
+
+        cambio:cambio
+
+    };
+
+
+    historialVentas.unshift(venta);
+
+
+    // Guardar en teléfono/computadora
+
+    localStorage.setItem(
+        "historialCiber",
+        JSON.stringify(historialVentas)
+    );
+
+
+    alert(
+        "Venta realizada correctamente.\n\n" +
+        "Total: $" + total.toFixed(2) +
+        "\nCambio: $" + cambio.toFixed(2)
+    );
+
+
+    productos=[];
+
+    document.getElementById("paga").value="";
+    document.getElementById("descuento").value="";
+
+    mostrarProductos();
+
+    actualizarTotal();
+
+}
+
+
+// MOSTRAR HISTORIAL
+function mostrarHistorial(){
+
+    let caja =
+        document.getElementById("historialBox");
+
+    caja.classList.toggle("oculto");
+
+
+    mostrarVentas();
+
+}
+
+
+// MOSTRAR VENTAS
+function mostrarVentas(){
+
+    let contenedor =
+        document.getElementById("historial");
+
+
+    if(historialVentas.length === 0){
+
+        contenedor.innerHTML=`
+            <div class="vacio">
+                No hay ventas registradas.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    contenedor.innerHTML="";
+
+
+    historialVentas.forEach((venta,index)=>{
+
+        let productosTexto="";
+
+
+        venta.productos.forEach(producto=>{
+
+            productosTexto +=
+                `${producto.cantidad} × ${producto.nombre}<br>`;
+
+        });
+
+
+        contenedor.innerHTML += `
+
+        <div class="historial-item">
+
+            <b>Venta #${historialVentas.length-index}</b><br>
+
+            ${venta.fecha}
+
+            <hr>
+
+            ${productosTexto}
+
+            <b>Total:
+            $${venta.total.toFixed(2)}</b><br>
+
+            Pagó:
+            $${venta.paga.toFixed(2)}<br>
+
+            Cambio:
+            $${venta.cambio.toFixed(2)}
+
+        </div>
+
+        `;
+
+    });
+
+}
+
+
+// BORRAR HISTORIAL
+function borrarHistorial(){
+
+    if(historialVentas.length === 0){
+        return;
+    }
+
+
+    if(confirm("¿Borrar todo el historial?")){
+
+        historialVentas=[];
+
+        localStorage.removeItem("historialCiber");
+
+        mostrarVentas();
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
